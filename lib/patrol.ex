@@ -2,6 +2,32 @@ defmodule Patrol do
   @moduledoc """
   This module contains helpers for creating a sandbox environment
   for safely executing untrusted code.
+
+  ## Creating a sandbox
+
+  You can create multiple sandboxes for code execution.
+
+  This is useful for implementing a different user access level sandboxes.
+
+      iex> sb_users = %Patrol.Sandbox{allowed_locals: []}
+      iex> sb_root = %Patrol.Sandbox{}
+      iex> Patrol.eval("Enum.map(1..5, &(&1 + 3))", sb_root)
+      [4, 5, 6, 7, 8]
+      iex> Patrol.eval("Enum.map(File.ls("/"), &(File.rm!(&1)))", sb_user)
+      ** (Patrol.PermissionError) You tripped the alarm! File.ls/1 is not allowed
+
+  ## Creating self-contained sandboxed environments
+
+  These self-contained sandboxes are anonymous functions that can run multiple
+  codes with the same configuration.
+
+  In most cases,especially for simplicity, this what you should use.
+
+      iex> use Patrol
+      iex> sb = Patrol.create_sandbox()
+      iex> sb.('File.mkdir_p("/media/foo")')
+      ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p/1 is not allowed
+
   """
   @rand_min  17
   @rand_max  8765432369987654
@@ -31,13 +57,13 @@ defmodule Patrol do
 
       iex> use Patrol
       iex> policy = %Policy{allowed_non_local: [Bitwise: :all, System: [:version]]}
-      iex> sb = sandbox([policy: policy, timeout: 2000])
-      iex> sb.eval(System.version)
-      { :ok, result }
+      iex> sb = Patrol.create_sandbox([policy: policy, timeout: 2000])
+      iex> sb.(System.version)
+      { :ok, "0.14.2-dev" }
 
 
       iex> sb.eval(Code.loaded_files)
-      ** (Patrol.Exception) You tripped the alarm! Code.loaded_files() is not allowed
+      ** (Patrol.PermissionError) You tripped the alarm! Code.loaded_files() is not allowed
 
 
   ### To run the same code in multiple sandboxes
@@ -52,7 +78,14 @@ defmodule Patrol do
   end
 
   @doc """
-  Evaluate the
+  Evaluate the code within the sandbox
+
+  ## Examples
+
+      iex> use Patrol
+      iex> sb = Patrol.create_sandbox()
+      iex> sb.('File.mkdir_p("/media/foo")')
+      ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p/1 is not allowed
   """
   def eval(code_str, sandbox) do
     case Code.string_to_quoted(code_str) do
