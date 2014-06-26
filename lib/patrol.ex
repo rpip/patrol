@@ -29,6 +29,8 @@ defmodule Patrol do
       ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p/1 is not allowed
 
   """
+
+
   @rand_min  17
   @rand_max  8765432369987654
 
@@ -53,7 +55,7 @@ defmodule Patrol do
   environment. It returns a self-contained module with an **eval** method for code
   evaluation
 
-  ## Examples
+  ## Creating a self-contained sandbox
 
       iex> use Patrol
       iex> policy = %Policy{allowed_non_local: [Bitwise: :all, System: [:version]]}
@@ -62,16 +64,19 @@ defmodule Patrol do
       { :ok, "0.14.2-dev" }
 
 
-      iex> sb.eval(Code.loaded_files)
+      iex> sb.eval("Code.loaded_files")
       ** (Patrol.PermissionError) You tripped the alarm! Code.loaded_files() is not allowed
 
 
-  ### To run the same code in multiple sandboxes
+  ## To run the same code in multiple sandboxes
 
       iex> sb_users = %Patrol.Sandbox{allowed_locals: []}
       iex> sb_root = %Patrol.Sandbox{}
-      iex> Patrol.eval(Enum.map(1..5, &(&1 + 3)))
-      [4, 5, 6, 7, 8]
+      iex> Patrol.eval("System.cmd('cat /etc/passwd')"), sb_root)
+      MySQL Server,,,:/nonexistent:/bin/false:/jenkins:x:117:128:Jenkins....
+
+      iex> Patrol.eval("Enum.map(File.ls("/"), &(File.rm!(&1)))", sb_user)
+      ** (Patrol.PermissionError) You tripped the alarm! File.rm/1 is not allowed
   """
   def create_sandbox(sandbox \\ %Patrol.Sandbox{}) when is_map(sandbox) do
       fn code -> eval(code, sandbox) end
