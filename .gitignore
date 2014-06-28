@@ -3,3 +3,5 @@
 erl_crash.dump
 *.ez
 NOTES
+/test/fixtures/stdio.txt
+
