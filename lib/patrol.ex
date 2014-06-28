@@ -1,7 +1,7 @@
 defmodule Patrol do
   @moduledoc """
   This module contains helpers for creating a sandbox environment
-  for safely executing untrusted code.
+  for safely executing untrusted Elixir code.
 
   ## Creating a sandbox
 
@@ -30,7 +30,7 @@ defmodule Patrol do
 
   """
 
-
+  @io_device "/dev/null"
   @rand_min  17
   @rand_max  8765432369987654
 
@@ -47,7 +47,7 @@ defmodule Patrol do
   Walk the bytecode AST and catch blacklisted function calls
   """
   def is_safe?(forms, _sandbox) do
-    nil
+    true
   end
 
   @doc """
@@ -92,13 +92,9 @@ defmodule Patrol do
       iex> sb.('File.mkdir_p("/media/foo")')
       ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p/1 is not allowed
   """
-  def eval(code_str, sandbox) do
-    case Code.string_to_quoted(code_str) do
+  def eval(code, sandbox) when is_binary(code) do
+    case Code.string_to_quoted(code) do
       { :ok, forms } ->
-        unless is_safe?(forms, sandbox) do
-          raise Patrol.PermissionError, code_str
-        end
-
         # proceed to actual code evaluation
         do_eval(forms, sandbox)
 
@@ -107,8 +103,54 @@ defmodule Patrol do
     end
   end
 
-  defp do_eval(form, sandbox) do
-    []
+  # when passed a quoted expression
+  def eval(code, sandbox) when is_list(code) do
+    do_eval(code, sandbox)
+  end
+
+  defp do_eval(forms, sandbox) do
+    unless is_safe?(forms, sandbox) do
+      raise Patrol.PermissionError, Macro.to_string(forms)
+    end
+
+    {pid, ref} = {self, make_ref}
+    child_pid = create_eval_process(forms, sandbox, pid, ref)
+    receive do
+      {:ok, ^ref, {result, _ctx}} ->
+        unless nil?(sandbox.transform) do
+          {:ok, sandbox.transform.(result)}
+        else
+          {:ok, result}
+        end
+     error ->
+        {:error, error}
+
+    after
+      sandbox.timeout ->
+            # kill the child process and return
+            Process.exit(child_pid, :kill)
+            {:error, {:timeout, Macro.to_string(forms)}}
+    end
+  end
+
+  defp create_eval_process(forms, sandbox, parent_pid, ref) do
+    proc = fn ->
+                cond do
+                  is_pid(sandbox.io) && Process.alive?(sandbox.io) ->
+                    Process.group_leader(self, sandbox.io)
+                  nil?(sandbox.io) ->
+                    # redirect all IO to the default IO ("/dev/null")
+                    io_device = File.open!(@io_device, [:write, :read])
+                    Process.group_leader(self, io_device)
+                  sandbox.io == :stdio ->
+                    nil
+                  true ->
+                    raise "Expected a live process or :stdio as sandbox IO device, but got '#{sandbox.io}'."
+                end
+                send(parent_pid, {:ok, ref, Code.eval_quoted(forms, sandbox.context, __ENV__)})
+           end
+    # spawn process and return the pid
+    spawn_link(proc)
   end
 
 end
