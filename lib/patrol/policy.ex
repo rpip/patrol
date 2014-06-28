@@ -2,6 +2,7 @@ defmodule Patrol.Policy do
   @moduledoc """
   Security policy for the sandbox.
   """
+
   @allowed_non_local [
     {Bitwise,      :all},
     {Dict,         :all},
@@ -17,7 +18,7 @@ defmodule Patrol.Policy do
     {String,       :all},
     {Integer,      :all},
     {Binary.Chars, [:to_binary]}, # string interpolation
-    {Kernel,       :all, except: [:exit]},
+    {Kernel,       {:all, except: [:exit]}},
     {System,       [:version]},
     {:calendar,    :all},
     {:math,        :all},

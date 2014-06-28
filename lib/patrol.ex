@@ -9,8 +9,8 @@ defmodule Patrol do
 
   This is useful for implementing a different user access level sandboxes.
 
-      iex> sb_users = %Patrol.Sandbox{allowed_locals: []}
-      iex> sb_root = %Patrol.Sandbox{}
+      iex> sb_users = %Sandbox{allowed_locals: []}
+      iex> sb_root = %Sandbox{}
       iex> Patrol.eval("Enum.map(1..5, &(&1 + 3))", sb_root)
       [4, 5, 6, 7, 8]
       iex> Patrol.eval("Enum.map(File.ls("/"), &(File.rm!(&1)))", sb_user)
@@ -30,9 +30,13 @@ defmodule Patrol do
 
   """
 
+  alias Patrol.Sandbox
+  alias Patrol.Policy
+
   @io_device "/dev/null"
   @rand_min  17
   @rand_max  8765432369987654
+  @memory_check_interval 1000
 
   defmacro __using__(_opts \\ []) do
     quote do
@@ -70,15 +74,16 @@ defmodule Patrol do
 
   ## To run the same code in multiple sandboxes
 
-      iex> sb_users = %Patrol.Sandbox{allowed_locals: []}
-      iex> sb_root = %Patrol.Sandbox{}
+      iex> use Patrol
+      iex> sb_users = %Sandbox{allowed_locals: []}
+      iex> sb_root = %Sandbox{}
       iex> Patrol.eval("System.cmd('cat /etc/passwd')"), sb_root)
       MySQL Server,,,:/nonexistent:/bin/false:/jenkins:x:117:128:Jenkins....
 
       iex> Patrol.eval("Enum.map(File.ls("/"), &(File.rm!(&1)))", sb_user)
       ** (Patrol.PermissionError) You tripped the alarm! File.rm/1 is not allowed
   """
-  def create_sandbox(sandbox \\ %Patrol.Sandbox{}) when is_map(sandbox) do
+  def create_sandbox(sandbox \\ %Sandbox{}) when is_map(sandbox) do
       fn code -> eval(code, sandbox) end
   end
 
@@ -115,21 +120,24 @@ defmodule Patrol do
 
     {pid, ref} = {self, make_ref}
     child_pid = create_eval_process(forms, sandbox, pid, ref)
+    handle_eval_process(child_pid, sandbox, ref)
+  end
+
+  defp handle_eval_process(child_pid, sandbox, ref) do
     receive do
       {:ok, ^ref, {result, _ctx}} ->
+        Process.exit(child_pid, :kill)
         unless nil?(sandbox.transform) do
           {:ok, sandbox.transform.(result)}
         else
           {:ok, result}
         end
-     error ->
+      error ->
         {:error, error}
-
     after
       sandbox.timeout ->
-            # kill the child process and return
-            Process.exit(child_pid, :kill)
-            {:error, {:timeout, Macro.to_string(forms)}}
+        # kill the child process and return
+        {:error, {:timeout, Process.exit(child_pid, :kill)}}
     end
   end
 
@@ -145,12 +153,17 @@ defmodule Patrol do
                   sandbox.io == :stdio ->
                     nil
                   true ->
-                    raise "Expected a live process or :stdio as sandbox IO device, but got '#{sandbox.io}'."
+                    raise """
+                          Expected a live process or :stdio as sandbox IO device,
+                          but got '#{sandbox.io}'.
+                          """
                 end
+
+                # eval code
                 send(parent_pid, {:ok, ref, Code.eval_quoted(forms, sandbox.context, __ENV__)})
            end
     # spawn process and return the pid
-    spawn_link(proc)
+    spawn(proc)
   end
 
 end

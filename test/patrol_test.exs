@@ -4,22 +4,23 @@ defmodule PatrolTest do
 
 
   setup do
-    sb = Patrol.create_sandbox()
+    sb = %Patrol.Sandbox{}
 
     {:ok, [sandbox: sb]}
   end
 
-  test "create sandbox", ctx do
-    assert(is_function(ctx[:sandbox]))
+  test "create sandbox" do
+    sb = Patrol.create_sandbox()
+    assert(is_function(sb))
   end
 
-  test "sandbox simple addition is true", ctx do
-    assert {:ok, 4} == ctx[:sandbox].("1 + 3")
+  test "sandbox simple addition is true" do
+    sb = Patrol.create_sandbox
+    assert {:ok, 4} == sb.("1 + 3")
   end
 
-  test "custom sandbox" do
-    sb = %Patrol.Sandbox{}
-    assert {:ok, _version} = Patrol.eval("System.version", sb)
+  test "custom sandbox", ctx do
+    assert {:ok, _version} = Patrol.eval("System.version", ctx[:sandbox])
   end
 
   test "sandbox use standard IO" do
@@ -30,16 +31,24 @@ defmodule PatrolTest do
   test "redirect IO to a file" do
        io_file = "test/fixtures/stdio.txt"
 
-       sb = %Patrol.Sandbox{io: File.open!(io_file, [:write, :read])}
+       sb = %Sandbox{io: File.open!(io_file, [:write, :read])}
        msg = "Hello world from Patrol!"
        {:ok, :ok} = Patrol.eval("IO.puts('#{msg}')", sb)
        contents = File.read!(io_file)
-       assert contents = msg
+       assert String.strip(contents) == msg
   end
 
-  test "eval quoted expression", ctx do
+  test "eval quoted expression" do
+    sb = Patrol.create_sandbox
     contents = quote do: Enum.map(1..5, &(&1 + 1))
-    assert {:ok, [2, 3, 4, 5, 6]} = ctx[:sandbox].(contents)
+    assert {:ok, [2, 3, 4, 5, 6]} = sb.(contents)
   end
+
+  test "timeout" do
+    sb = %Sandbox{timeout: 6000}
+    quoted_expr = quote do: Enum.map(1..9999999999, &(IO.puts &1))
+    assert {:error, {:timeout, true}} = Patrol.eval(quoted_expr, sb)
+  end
+
 
 end
