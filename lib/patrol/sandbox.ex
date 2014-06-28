@@ -17,18 +17,14 @@ defmodule Patrol.Sandbox do
 
   * context
 
-    Hasmaap of values to inject into the code context
+    Hashmap of values to inject into the code context
   """
-  @timeout 10000
-  @stdin :stdin
-  @stdout :stdout
-  @stderr :stderr
+
+  @timeout 50000
 
   defstruct policy:    nil,
             timeout:   @timeout,
             transform: nil,
-            stdin:     @stdin,
-            stdout:    @stdout,
-            stderr:    @stderr,
+            io:        nil,
             context:   []
 end
