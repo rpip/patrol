@@ -104,7 +104,7 @@ defmodule Patrol do
   end
 
   # when passed a quoted expression
-  def eval(code, sandbox) when is_list(code) do
+  def eval(code, sandbox) when is_tuple(code) do
     do_eval(code, sandbox)
   end
 

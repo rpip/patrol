@@ -37,4 +37,9 @@ defmodule PatrolTest do
        assert contents = msg
   end
 
+  test "eval quoted expression", ctx do
+    contents = quote do: Enum.map(1..5, &(&1 + 1))
+    assert {:ok, [2, 3, 4, 5, 6]} = ctx[:sandbox].(contents)
+  end
+
 end
