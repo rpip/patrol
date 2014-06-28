@@ -20,7 +20,7 @@ defmodule Patrol.Sandbox do
     Hashmap of values to inject into the code context
   """
 
-  @timeout 50000
+  @timeout 5000
 
   defstruct policy:    nil,
             timeout:   @timeout,
