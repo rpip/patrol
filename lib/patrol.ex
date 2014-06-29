@@ -97,13 +97,17 @@ defmodule Patrol do
       iex> sb.('File.mkdir_p("/media/foo")')
       ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p/1 is not allowed
   """
+  def eval(code) do
+    eval(code, %Sandbox{})
+  end
+
   def eval(code, sandbox) when is_binary(code) do
     case Code.string_to_quoted(code) do
-      { :ok, forms } ->
+      {:ok, forms} ->
         # proceed to actual code evaluation
         do_eval(forms, sandbox)
 
-      { :error, { line, error, token } } ->
+      {:error, {line, error, token}} ->
         :elixir_errors.parse(line, "patrol", error, token)
     end
   end
@@ -119,6 +123,7 @@ defmodule Patrol do
     end
 
     {pid, ref} = {self, make_ref}
+    Process.flag(:trap_exit, true)
     child_pid = create_eval_process(forms, sandbox, pid, ref)
     handle_eval_process(child_pid, sandbox, ref)
   end
@@ -132,6 +137,11 @@ defmodule Patrol do
         else
           {:ok, result}
         end
+      {:EXIT, _pid, {%CompileError{description: error_msg}, _err_stacktrace}} ->
+        {:error, {:undef, {:local, error_msg}}}
+      {:EXIT, _pid, {:undef, err_stacktrace}} ->
+      {module, fun, args, _} = List.first err_stacktrace
+        {:error, {:undef, {:remote, format_undef_err(module, fun, args)}}}
       error ->
         {:error, error}
     after
@@ -163,7 +173,16 @@ defmodule Patrol do
                 send(parent_pid, {:ok, ref, Code.eval_quoted(forms, sandbox.context, __ENV__)})
            end
     # spawn process and return the pid
-    spawn(proc)
+    spawn_link(proc)
   end
+
+ defp format_undef_err(module, fun, args) do
+   str_len = &String.length/1
+   module = to_string(module)
+   module_name = if String.starts_with?(module, "Elixir") do
+                   String.slice(module, str_len.("Elixir."), str_len.(module))
+                 end
+   "undefined function: #{module_name}.#{fun}/#{length(args)}, called with: #{inspect args}"
+ end
 
 end

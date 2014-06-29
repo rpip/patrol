@@ -21,10 +21,19 @@ defmodule Patrol.Sandbox do
   """
 
   @timeout 5000
+  @memory_limit 5 * 1_024_000 # 5MB
 
   defstruct policy:    nil,
             timeout:   @timeout,
             transform: nil,
             io:        nil,
+            memory:    @memory_limit,
             context:   []
+
+
+  @doc """
+  Returns the default memory limit
+  """
+  def memory_limit, do: @memory_limit
+
 end

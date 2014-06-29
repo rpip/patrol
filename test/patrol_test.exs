@@ -4,7 +4,7 @@ defmodule PatrolTest do
 
 
   setup do
-    sb = %Patrol.Sandbox{}
+    sb = %Sandbox{}
 
     {:ok, [sandbox: sb]}
   end
@@ -24,7 +24,7 @@ defmodule PatrolTest do
   end
 
   test "sandbox use standard IO" do
-    sb = %Patrol.Sandbox{io: :stdio}
+    sb = %Sandbox{io: :stdio}
     assert Patrol.eval("IO.puts('Hello world from Patrol!')", sb)
   end
 
@@ -50,5 +50,12 @@ defmodule PatrolTest do
     assert {:error, {:timeout, true}} = Patrol.eval(quoted_expr, sb)
   end
 
+  test "undef local function call" do
+    assert {:error, {:undef, {:local, _error_msg}}} =  Patrol.eval("foobar(:foo, :bar)")
+  end
+
+  test "undef remote function call" do
+    assert {:error, {:undef, {:remote, _error_msg}}} =  Patrol.eval("File.bar(:foo, :bar)")
+  end
 
 end
