@@ -1,4 +1,4 @@
-[![Build status](https://travis-ci.org/mawuli-ypa/mpower-python.svg "Build status")](https://travis-ci.org/mawuli-ypa/mpower-python.svg)
+[![Build status](https://travis-ci.org/mawuli-ypa/patrol.svg "Build status")](https://travis-ci.org/mawuli-ypa/patrol.svg)
 
 Patrol
 ======
