@@ -20,14 +20,20 @@ defmodule Patrol.Sandbox do
     Hashmap of values to inject into the code context
   """
 
+  require Patrol.Policy
+
   @timeout 5000
   @memory_limit 5 * 1_024_000 # 5MB
+  @range_min 0
+  @range_max 1000
 
-  defstruct policy:    nil,
+  defstruct policy:    %Patrol.Policy{},
             timeout:   @timeout,
             transform: nil,
             io:        nil,
             memory:    @memory_limit,
+            range_min: @range_min,
+            range_max: @range_max,
             context:   []
 
 

@@ -19,14 +19,13 @@ defmodule Patrol.Policy do
     {Integer,      :all},
     {Binary.Chars, [:to_binary]}, # string interpolation
     {Kernel,       {:all, except: [:exit]}},
+    {IO,           [:puts]},
     {System,       [:version]},
     {:calendar,    :all},
     {:math,        :all},
     {:os,          [:type, :version]}
   ]
 
-  # with 0 arity
-  @restricted_local [:binding, :is_alive, :make_ref, :node, :self]
   @allowed_local [:&&, :.., :<>, :access, :and, :atom_to_binary, :binary_to_atom,
     :case, :cond, :div, :elem, :if, :in, :insert_elem, :is_range, :is_record,
     :is_regex, :match?, :nil?, :or, :rem, :set_elem, :sigil_B, :sigil_C, :sigil_R,
@@ -42,8 +41,11 @@ defmodule Patrol.Policy do
     :list_to_float, :list_to_integer, :list_to_tuple, :max, :min, :not, :round, :size,
     :term_to_binary, :throw, :tl, :trunc, :tuple_size, :tuple_to_list, :fn, :->, :&,
     :__block__, :"{}", :"<<>>", :::, :for, :^, :when, :|,
-    :defmodule, :def, :defp, :__aliases__]
+    :defmodule, :def, :defp, :__aliases__, :import]
 
+
+  defstruct allowed_local: @allowed_local,
+            allowed_non_local: @allowed_non_local
 
   @doc """
   Returns the allowed local function calls
@@ -54,10 +56,5 @@ defmodule Patrol.Policy do
   Returns the allowed remote function calls
   """
   def allowed_non_local, do: @allowed_non_local
-
-  @doc """
-  Returns the allowed restricted local function calls
-  """
-  def restricted_local, do: @restricted_local
 
 end

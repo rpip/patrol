@@ -25,13 +25,12 @@ defmodule Patrol do
 
       iex> use Patrol
       iex> sb = Patrol.create_sandbox()
-      iex> sb.('File.mkdir_p("/media/foo")')
-      ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p/1 is not allowed
+      iex> sb.("File.mkdir_p('/media/foo')")
+      ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p('/media/foo') is not allowed
 
   """
 
   alias Patrol.Sandbox
-  alias Patrol.Policy
 
   @io_device "/dev/null"
   @rand_min  17
@@ -48,9 +47,47 @@ defmodule Patrol do
   end
 
   @doc """
-  Walk the bytecode AST and catch blacklisted function calls
+  Walk the AST and catch blacklisted function calls
+  Returns false if the AST contains non-allowed code, otherwise true
+
+  ## Checks
+
+  * 0 arity local functions
+  * Functions defined with Kernel.def/2
+  * Range size. Default range: to 0..1000
+  * Calls to anonymous functions, eg. f.()
+  * Remote function calls, such as System.version
   """
-  def is_safe?(forms, _sandbox) do
+  defp is_safe?({{:., _, [module, fun]}, _, args}, sandbox) do
+    module = Macro.expand(module, __ENV__)
+    case Dict.get(sandbox.policy.allowed_non_local, module) do
+      :all ->
+        is_safe?(args, sandbox)
+      {:all, except: methods} when is_list(methods) ->
+        if fun in methods, do: false
+      methods when is_list(methods) ->
+        (fun in methods) and is_safe?(args, sandbox)
+      _ ->
+        false
+    end
+  end
+
+  # anonymous function call, eg: sumup.(1..10)
+  defp is_safe?({{:., _, [{fun, _, _}]}, [], args}) do
+    is_safe?(args)
+  end
+
+  # local calls
+  defp is_safe?({fun, _, args}, sandbox) when is_atom(fun) and is_list(args) do
+    (fun in sandbox.policy.allowed_local) and is_safe?(args, sandbox)
+  end
+
+  # limit range
+  defp is_safe?({:.., _, [begin, last]}, sandbox) do
+    (last - begin) <= sandbox.range_max and last < sandbox.range_max
+  end
+
+  defp is_safe?(forms, sandbox) do
     true
   end
 
@@ -130,7 +167,7 @@ defmodule Patrol do
 
   defp handle_eval_process(child_pid, sandbox, ref) do
     receive do
-      {:ok, ^ref, {result, _ctx}} ->
+      {:ok, ref, {result, _ctx}} ->
         Process.exit(child_pid, :kill)
         unless nil?(sandbox.transform) do
           {:ok, sandbox.transform.(result)}
@@ -140,8 +177,10 @@ defmodule Patrol do
       {:EXIT, _pid, {%CompileError{description: error_msg}, _err_stacktrace}} ->
         {:error, {:undef, {:local, error_msg}}}
       {:EXIT, _pid, {:undef, err_stacktrace}} ->
-      {module, fun, args, _} = List.first err_stacktrace
+        {module, fun, args, _} = List.first err_stacktrace
         {:error, {:undef, {:remote, format_undef_err(module, fun, args)}}}
+      {:EXIT, _pid, reason} when reason in [:normal, :killed] ->
+        exit(:normal)
       error ->
         {:error, error}
     after
@@ -170,7 +209,8 @@ defmodule Patrol do
                 end
 
                 # eval code
-                send(parent_pid, {:ok, ref, Code.eval_quoted(forms, sandbox.context, __ENV__)})
+                env = :elixir.env_for_eval(delegate_locals_to: nil)
+                send(parent_pid, {:ok, ref, Code.eval_quoted(forms, sandbox.context, env)})
            end
     # spawn process and return the pid
     spawn_link(proc)

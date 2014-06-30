@@ -50,12 +50,12 @@ defmodule PatrolTest do
     assert {:error, {:timeout, true}} = Patrol.eval(quoted_expr, sb)
   end
 
-  test "undef local function call" do
-    assert {:error, {:undef, {:local, _error_msg}}} =  Patrol.eval("foobar(:foo, :bar)")
-  end
 
   test "undef remote function call" do
-    assert {:error, {:undef, {:remote, _error_msg}}} =  Patrol.eval("File.bar(:foo, :bar)")
+    #assert {:error, {:undef, {:remote, _error_msg}}} =  Patrol.eval("File.bar(:foo, :bar)")
+    assert_raise Patrol.PermissionError, fn ->
+      Patrol.eval("File.cwd")
+    end
   end
 
 end
