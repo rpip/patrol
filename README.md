@@ -1,8 +1,10 @@
+[![Build status](https://travis-ci.org/mawuli-ypa/mpower-python.svg "Build status")](https://travis-ci.org/mawuli-ypa/mpower-python.svg)
+
 Patrol
 ======
 
 > Security depends not so much upon how much you have, as upon how
-> much you can do without. - Joseph Wood Krutch
+> much you can do without. - [Joseph Wood Krutch]
 
 Patrol is a set of helpers for creating a sandbox environment for
 safely executing untrusted Elixir code.
@@ -88,3 +90,4 @@ Use at your own risk ;)
 [Clojail]: https://github.com/Raynes/clojail
 [Clj-Sandbox]: https://github.com/Licenser/clj-sandbox
 [TryElixir]: https://github.com/tryelixir/tryelixir
+[Joseph Wood Krutch]: http://en.wikipedia.org/wiki/Joseph_Wood_Krutch
