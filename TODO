@@ -1,0 +1,6 @@
+# TODO
+
+* Limit import and require options
+* Restrict methods calls by method name and arithy. Currently restrict
+  methods by only name
+* More tests
