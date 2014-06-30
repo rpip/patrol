@@ -73,8 +73,8 @@ defmodule Patrol do
   end
 
   # anonymous function call, eg: sumup.(1..10)
-  defp is_safe?({{:., _, [{fun, _, _}]}, [], args}) do
-    is_safe?(args)
+  defp is_safe?({{:., _, [{_fun, _, _}]}, [], args}, sandbox) do
+    is_safe?(args, sandbox)
   end
 
   # local calls
@@ -87,7 +87,7 @@ defmodule Patrol do
     (last - begin) <= sandbox.range_max and last < sandbox.range_max
   end
 
-  defp is_safe?(forms, sandbox) do
+  defp is_safe?(_forms, _sandbox) do
     true
   end
 
