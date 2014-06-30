@@ -26,7 +26,9 @@ By default, the untrusted code is executed in a process with the following limit
 
 You can enable all of these features by setting the sandbox configuration.
 
-## Example 1: (self-contained sandbox environment)
+## Examples:
+
+### Self-contained sandbox environment
 
 ```elixir
 iex> use Patrol
@@ -35,7 +37,7 @@ iex> sb.("File.mkdir_p('/media/foo')")
 ** (Patrol.PermissionError) You tripped the alarm! File.mkdir_p('/media/foo') is not allowed
 ```
 
-## Example 2: evaluate code in multiple sandbox environments
+### Evaluate code in multiple sandbox environments
 
 ```elixir
 
