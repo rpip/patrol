@@ -3,4 +3,7 @@
 * Limit import and require options
 * Restrict methods calls by method name and arithy. Currently restrict
   methods by only name
-* More tests
+* redirect IO to :NUL on Windows
+* Track memory usage
+* More tests: large code, eval code from file
+
