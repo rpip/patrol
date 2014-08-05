@@ -4,7 +4,6 @@ defmodule Patrol.Mixfile do
   def project do
     [app: :patrol,
      version: "0.0.1",
-     elixir: "~> 0.14.2",
      deps: deps]
   end
 
