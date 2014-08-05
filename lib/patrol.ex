@@ -191,27 +191,27 @@ defmodule Patrol do
   end
 
   defp create_eval_process(forms, sandbox, parent_pid, ref) do
-    proc = fn ->
-                cond do
-                  is_pid(sandbox.io) && Process.alive?(sandbox.io) ->
-                    Process.group_leader(self, sandbox.io)
-                  nil?(sandbox.io) ->
-                    # redirect all IO to the default IO ("/dev/null")
-                    io_device = File.open!(@io_device, [:write, :read])
-                    Process.group_leader(self, io_device)
-                  sandbox.io == :stdio ->
-                    nil
-                  true ->
-                    raise """
-                          Expected a live process or :stdio as sandbox IO device,
-                          but got '#{sandbox.io}'.
-                          """
-                end
+    proc =
+    fn ->
+      cond do
+        is_pid(sandbox.io) && Process.alive?(sandbox.io) ->
+          Process.group_leader(self, sandbox.io)
+        nil?(sandbox.io) ->
+          io_device = File.open!(@io_device, [:write, :read])
+          Process.group_leader(self, io_device)
+          sandbox.io == :stdio ->
+          nil
+        true ->
+          raise """
+                Expected a live process or :stdio as sandbox IO device,
+                got '#{sandbox.io}'.
+                """
+      end
 
-                # eval code
-                env = :elixir.env_for_eval(delegate_locals_to: nil)
-                send(parent_pid, {:ok, ref, Code.eval_quoted(forms, sandbox.context, env)})
-           end
+      # eval code
+      env = :elixir.env_for_eval(delegate_locals_to: nil)
+      send(parent_pid, {:ok, ref, Code.eval_quoted(forms, sandbox.context, env)})
+    end
     # spawn process and return the pid
     spawn_link(proc)
   end
